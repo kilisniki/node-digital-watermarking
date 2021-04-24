@@ -163,7 +163,7 @@ async function transformImageWithText(srcFileName,watermarkText,enCodeFileName='
   if((typeof watermarkText)!='string') {
     throw new Error('waterMarkText must be string')
   }
-  if((typeof fontSize)!='number') {
+  if((typeof config.fontSize)!='number') {
     throw new Error('fontSize must be number')
   }
   if((typeof enCodeFileName)!='string') {
