@@ -73,23 +73,23 @@ function getDftMat(cv, padded)
     return comImg;
 }
 
-function addTextByMat(cv, comImg,watermarkText,point,fontSize)
+function addTextByMat(cv, comImg,watermarkText,point,config)
 {
-    cv.putText(comImg, watermarkText, point, cv.FONT_HERSHEY_DUPLEX, fontSize, cv.Scalar.all(0),2);  
+    cv.putText(comImg, watermarkText, point, cv.FONT_HERSHEY_DUPLEX, config.fontSize, cv.Scalar.all(0),config.thickness || 2);
     cv.flip(comImg, comImg, -1);
-    cv.putText(comImg, watermarkText, point, cv.FONT_HERSHEY_DUPLEX, fontSize, cv.Scalar.all(0),2);  
+    cv.putText(comImg, watermarkText, point, cv.FONT_HERSHEY_DUPLEX, config.fontSize, cv.Scalar.all(0),config.thickness || 2);
     cv.flip(comImg, comImg, -1);
 }
 
-function transFormMatWithText(cv, srcImg, watermarkText,fontSize) {
+function transFormMatWithText(cv, srcImg, watermarkText,config) {
     let padded = getBlueChannel(cv, srcImg);
     padded.convertTo(padded, cv.CV_32F);
     let comImg = getDftMat(cv, padded);
     // add text 
     let center = new cv.Point(padded.cols/2, padded.rows/2);
-    addTextByMat(cv, comImg,watermarkText,center,fontSize);
-    let outer = new cv.Point (45, 45);
-    addTextByMat(cv, comImg,watermarkText,outer,fontSize);
+    addTextByMat(cv, comImg,watermarkText,center,config);
+    let outer = new cv.Point (config.startX || 45, config.startY || 45);
+    addTextByMat(cv, comImg,watermarkText,outer,config);
     //back image
     let invDFT = new cv.Mat();
     cv.idft(comImg, invDFT, cv.DFT_SCALE | cv.DFT_REAL_OUTPUT, 0);
@@ -154,7 +154,7 @@ function matToBuffer(cv, mat){
     return imgData
 }
 
-async function transformImageWithText(srcFileName,watermarkText,fontSize,enCodeFileName='') {
+async function transformImageWithText(srcFileName,watermarkText,enCodeFileName='', config) {
   const context = await isReadyFunc ()
   const cv = context.cv;
   if((typeof srcFileName)!='string' && (!(srcFileName instanceof Buffer))) {
@@ -172,12 +172,21 @@ async function transformImageWithText(srcFileName,watermarkText,fontSize,enCodeF
   let jimpSrc = await Jimp.read(srcFileName);
   let srcImg = new cv.matFromImageData(jimpSrc.bitmap);
   if (srcImg.empty()){throw new Error("read image failed");}
-  let comImg = transFormMatWithText(cv, srcImg, watermarkText, fontSize);
+  let comImg = transFormMatWithText(cv, srcImg, watermarkText, config);
   const imgRes = new Jimp({
     width: comImg.cols,
     height: comImg.rows,
     data: matToBuffer(cv, comImg)
   });
+  if (config.resultImageQuality) {
+      imgRes.quality(config.resultImageQuality);
+  }
+  if (config.resultImageWidth || config.resultImageHeight) {
+      imgRes.resize(
+          config.resultImageWidth || comImg.cols,
+          config.resultImageHeight || comImg.rows
+      )
+  }
   srcImg.delete();
   comImg.delete();
   if(enCodeFileName) {
